@@ -4,8 +4,8 @@
   "start_url": "/HTMLNodeMapper/",
   "scope": "/HTMLNodeMapper/",
   "display": "standalone",
-  "background_color": "#f5f5f5",
-  "theme_color": "#2196F3",
+  "background_color": "#222",
+  "theme_color": "#222",
   "icons": [
     {
       "src": "/HTMLNodeMapper/favicon.png",
