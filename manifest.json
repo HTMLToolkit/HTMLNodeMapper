@@ -1,19 +1,19 @@
 {
   "name": "HTMLNodeMapper",
   "short_name": "HTMLNodeMapper",
-  "start_url": "/HTMLNodeMapper/",
-  "scope": "/HTMLNodeMapper/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#222",
   "theme_color": "#222",
   "icons": [
     {
-      "src": "/HTMLNodeMapper/favicon.png",
+      "src": "./favicon.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/HTMLNodeMapper/favicon.png",
+      "src": "./favicon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
