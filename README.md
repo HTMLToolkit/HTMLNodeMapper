@@ -1,6 +1,6 @@
-# HTMLNodeMapper
+# HTMLVisualizer
 
-**HTMLNodeMapper** is a web-based tool that generates an interactive graph representation of an HTML document’s structure. It visualizes elements, styles, scripts, and relationships between them, helping users understand and analyze the HTML hierarchy.
+**HTMLVisualizer** is a web-based tool that generates an interactive graph representation of an HTML document’s structure. It visualizes elements, styles, scripts, and relationships between them, helping users understand and analyze the HTML hierarchy.
 
 ## Features
 
@@ -18,7 +18,7 @@
 
 ## Installation
 
-No installation required. Open HTMLNodeMapper.html in a browser, or use the GitHub Pages.
+No installation required. Open HTMLVisualizer.html in a browser, or use the GitHub Pages.
 
 ## Usage
 

@@ -1,0 +1,31 @@
+{
+  "name": "htmlvisualizer",
+  "version": "0.1.0",
+  "description": "My typical web dev starter project.",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HTMLToolkit/HTMLVisualizer.git"
+  },
+  "author": "NellowTCS",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/HTMLToolkit/HTMLVisualizer/issues"
+  },
+  "homepage": "https://github.com/HTMLToolkit/HTMLVisualizer#readme",
+  "dependencies": {
+    "d3": "^7.9.0",
+    "vite": "^7.1.3"
+  },
+  "devDependencies": {
+    "@vite-pwa/assets-generator": "^1.0.1",
+    "sharp": "^0.34.4",
+    "vite-plugin-pwa": "^1.0.3"
+  }
+}
