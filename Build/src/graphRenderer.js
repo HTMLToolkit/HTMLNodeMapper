@@ -2,6 +2,47 @@
 
 import * as d3 from 'd3';
 
+const GRAPH_CONFIG = {
+    nodeRadius: 10,
+    linkDistance: 200,
+    chargeStrength: -500,
+    centerForceStrength: 0.1,
+    collideRadius: 40,
+    zoomExtent: [0.1, 10],
+    transitionDuration: 750,
+    labelFontSize: "12px",
+    labelDx: 12,
+    labelDy: 4,
+    colors: {
+        element: "blue",
+        script: "red",
+        stylesheet: "green",
+        "external-style": "green",
+        "inline-style": "orange",
+        "game-element": "purple",
+        function: "pink",
+        input: "yellow",
+        variable: "magenta",
+        default: "gray"
+    },
+    linkColors: {
+        input: "yellow",
+        output: "orange",
+        "style-use": "green",
+        "element-use": "cyan",
+        "function-call": "purple",
+        "variable-use": "magenta",
+        "js-style-mod": "magenta",
+        default: "white"
+    }
+};
+
+/**
+ * Renders the D3 graph with nodes and links.
+ * @param {Array} nodes - Array of node objects.
+ * @param {Array} links - Array of link objects.
+ * @param {Map} scriptContentMap - Map of script contents.
+ */
 export function renderGraph(nodes, links, scriptContentMap) {
     const svg = d3.select("svg");
     svg.selectAll("*").remove();
@@ -10,19 +51,19 @@ export function renderGraph(nodes, links, scriptContentMap) {
 
     const g = svg.append("g");
     const zoom = d3.zoom()
-        .scaleExtent([0.1, 10])
+        .scaleExtent(GRAPH_CONFIG.zoomExtent)
         .on("zoom", (event) => {
             g.attr("transform", event.transform);
         });
     svg.call(zoom);
 
     const simulation = d3.forceSimulation(nodes)
-        .force("link", d3.forceLink(links).id(d => d.id).distance(200))
-        .force("charge", d3.forceManyBody().strength(-500))
+        .force("link", d3.forceLink(links).id(d => d.id).distance(GRAPH_CONFIG.linkDistance))
+        .force("charge", d3.forceManyBody().strength(GRAPH_CONFIG.chargeStrength))
         .force("center", d3.forceCenter(width / 2, height / 2))
-        .force("collide", d3.forceCollide(40))
-        .force("x", d3.forceX(width / 2).strength(0.1))
-        .force("y", d3.forceY(height / 2).strength(0.1));
+        .force("collide", d3.forceCollide(GRAPH_CONFIG.collideRadius))
+        .force("x", d3.forceX(width / 2).strength(GRAPH_CONFIG.centerForceStrength))
+        .force("y", d3.forceY(height / 2).strength(GRAPH_CONFIG.centerForceStrength));
 
     let focusedNodeId = null;
     let hasClickedEmptySpace = false;
@@ -34,7 +75,7 @@ export function renderGraph(nodes, links, scriptContentMap) {
         .attr("class", d => d.type === "element-use" || d.type === "style-use" || d.type === "variable-use" || d.type === "js-style-mod" ? "dynamic-link" : "static-link");
 
     link.append("line")
-        .attr("stroke", d => d.type === "input" ? "yellow" : d.type === "output" ? "orange" : d.type === "style-use" ? "green" : d.type === "element-use" ? "cyan" : d.type === "function-call" ? "purple" : d.type === "variable-use" || d.type === "js-style-mod" ? "magenta" : "white")
+        .attr("stroke", d => GRAPH_CONFIG.linkColors[d.type] || GRAPH_CONFIG.linkColors.default)
         .attr("stroke-width", 1.5)
         .attr("marker-end", "url(#arrow)")
         .style("visibility", "visible");
@@ -61,69 +102,24 @@ export function renderGraph(nodes, links, scriptContentMap) {
         .selectAll("circle")
         .data(nodes)
         .join("circle")
-        .attr("r", 10)
-        .attr("fill", d => {
-            switch (d.type) {
-                case "element": return "blue";
-                case "script": return "red";
-                case "stylesheet":
-                case "external-style": return "green";
-                case "inline-style": return "orange";
-                case "game-element": return "purple";
-                case "function": return "pink";
-                case "input": return "yellow";
-                case "variable": return "magenta";
-                default: return "gray";
-            }
-        })
-        .on("click", (event, d) => {
-            event.stopPropagation();
-            const detailsPanel = document.getElementById('details-panel');
-            const detailsContent = document.getElementById('details-content');
-            detailsPanel.style.display = "block";
-            focusedNodeId = d.id;
-            hasClickedEmptySpace = false;
-            if (d.type === "function") {
-                detailsContent.textContent = d.content || "No function code available";
-                const scale = 2;
-                const x = -d.x * scale + width / 2;
-                const y = -d.y * scale + height / 2;
-                svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(scale));
-            } else if (d.type === "script") {
-                detailsContent.textContent = scriptContentMap.get(d.id) || "External script or no content";
-            } else if (d.type === "element" || d.type === "game-element" || d.type === "stylesheet" || d.type === "external-style" || d.type === "inline-style") {
-                detailsContent.textContent = d.content || `${d.name} (No additional details)`;
-            } else {
-                detailsContent.textContent = `${d.name} (Type: ${d.type})`;
-            }
-            updateVisibility();
-        })
+        .attr("r", GRAPH_CONFIG.nodeRadius)
+        .attr("fill", d => GRAPH_CONFIG.colors[d.type] || GRAPH_CONFIG.colors.default)
+        .on("click", (event, d) => handleNodeClick(event, d, width, height, svg, scriptContentMap))
         .call(d3.drag()
             .on("start", dragStart)
             .on("drag", dragging)
             .on("end", dragEnd));
 
-    svg.on("click", (event) => {
-        if (event.target.tagName === "svg") {
-            const detailsPanel = document.getElementById('details-panel');
-            const detailsContent = document.getElementById('details-content');
-            svg.transition().duration(750).call(zoom.transform, d3.zoomIdentity);
-            detailsPanel.style.display = "none";
-            detailsContent.textContent = "";
-            focusedNodeId = null;
-            hasClickedEmptySpace = true;
-            updateVisibility();
-        }
-    });
+    svg.on("click", (event) => handleSvgClick(event, svg));
 
     const labels = g.append("g")
         .selectAll("text")
         .data(nodes)
         .join("text")
         .attr("fill", "white")
-        .attr("font-size", "12px")
-        .attr("dx", 12)
-        .attr("dy", 4)
+        .attr("font-size", GRAPH_CONFIG.labelFontSize)
+        .attr("dx", GRAPH_CONFIG.labelDx)
+        .attr("dy", GRAPH_CONFIG.labelDy)
         .text(d => d.name);
 
     simulation.on("tick", () => {
@@ -143,6 +139,42 @@ export function renderGraph(nodes, links, scriptContentMap) {
         labels.attr("x", d => d.x)
             .attr("y", d => d.y);
     });
+
+    function handleNodeClick(event, d, width, height, svg, scriptContentMap) {
+        event.stopPropagation();
+        const detailsPanel = document.getElementById('details-panel');
+        const detailsContent = document.getElementById('details-content');
+        detailsPanel.style.display = "block";
+        focusedNodeId = d.id;
+        hasClickedEmptySpace = false;
+        if (d.type === "function") {
+            detailsContent.textContent = d.content || "No function code available";
+            const scale = 2;
+            const x = -d.x * scale + width / 2;
+            const y = -d.y * scale + height / 2;
+            svg.transition().duration(GRAPH_CONFIG.transitionDuration).call(zoom.transform, d3.zoomIdentity.translate(x, y).scale(scale));
+        } else if (d.type === "script") {
+            detailsContent.textContent = scriptContentMap.get(d.id) || "External script or no content";
+        } else if (d.type === "element" || d.type === "game-element" || d.type === "stylesheet" || d.type === "external-style" || d.type === "inline-style") {
+            detailsContent.textContent = d.content || `${d.name} (No additional details)`;
+        } else {
+            detailsContent.textContent = `${d.name} (Type: ${d.type})`;
+        }
+        updateVisibility();
+    }
+
+    function handleSvgClick(event, svg) {
+        if (event.target.tagName === "svg") {
+            const detailsPanel = document.getElementById('details-panel');
+            const detailsContent = document.getElementById('details-content');
+            svg.transition().duration(GRAPH_CONFIG.transitionDuration).call(zoom.transform, d3.zoomIdentity);
+            detailsPanel.style.display = "none";
+            detailsContent.textContent = "";
+            focusedNodeId = null;
+            hasClickedEmptySpace = true;
+            updateVisibility();
+        }
+    }
 
     function updateVisibility() {
         const connectedNodeIds = new Set();
