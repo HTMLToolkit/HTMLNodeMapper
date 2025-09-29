@@ -1,7 +1,6 @@
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Mona Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     text-align: center;
-    background-color: transparent;
     background: linear-gradient(135deg, #2196F3, #21CBF3);
     color: white;
     margin: 0;
@@ -9,83 +8,257 @@ body {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    font-weight: 400;
 }
 
 h1 {
     margin: 20px 0 10px 0;
-    padding: 10px 20px;
+    padding: 15px 25px;
     align-self: flex-start;
+    font-weight: 600;
+    font-size: 2rem;
+    letter-spacing: -0.02em;
 }
 
-input {
+input[type="file"] {
     margin: 20px;
+    padding: 12px 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: white;
+    font-family: 'Mona Sans', sans-serif;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+input[type="file"]:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-1px);
+}
+
+input[type="file"]::file-selector-button {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 8px;
+    color: white;
+    padding: 8px 16px;
+    margin-right: 12px;
+    font-family: 'Mona Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+input[type="file"]::file-selector-button:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 #loading {
-    font-size: 18px;
+    font-size: 16px;
+    font-weight: 500;
     margin-top: 10px;
     display: none;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 #progressContainer {
-    width: 50%;
-    background: #444;
-    height: 10px;
-    margin: 10px auto;
-    border-radius: 5px;
+    width: 60%;
+    max-width: 400px;
+    background: rgba(255, 255, 255, 0.1);
+    height: 8px;
+    margin: 15px auto;
+    border-radius: 12px;
     display: none;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 #progressBar {
     width: 0%;
     height: 100%;
-    background: limegreen;
-    border-radius: 5px;
-    transition: width 0.3s;
+    background: linear-gradient(90deg, #00ff88, #00cc6a);
+    border-radius: 12px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 12px rgba(0, 255, 136, 0.3);
 }
 
 #container {
     display: flex;
     flex: 1;
     overflow: hidden;
+    gap: 0;
 }
 
 #graph-container {
     width: 70vw;
-    height: 75vh;
+    height: 70vh;
     padding-right: 10px;
     display: flex;
     justify-content: center;
     align-items: center;
+    position: relative;
 }
 
 #details-panel {
     width: 30vw;
-    height: 75vh;
-    background: #016a82;
-    border-left: 1px solid white;
-    border-radius: 15px 0 0 15px;
-    padding: 10px;
+    height: 65vh;
+    background: linear-gradient(135deg, #016a82, #014d61);
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px 0 0 24px;
+    padding: 20px;
     overflow-y: auto;
-    font-family: monospace;
-    font-size: 14px;
+    font-family: 'Cascadia Code', 'Monaco', 'Menlo', monospace;
+    font-size: 13px;
+    line-height: 1.5;
     display: none;
+    backdrop-filter: blur(10px);
+    box-shadow: inset 1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+#details-panel::-webkit-scrollbar {
+    width: 6px;
+}
+
+#details-panel::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+#details-panel::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+#details-panel::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 #details-panel h3 {
     margin-top: 0;
+    margin-bottom: 16px;
+    font-family: 'Mona Sans', sans-serif;
+    font-size: 16px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.95);
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#details-content {
+    color: rgba(255, 255, 255, 0.85);
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 12px;
+    line-height: 1.6;
 }
 
 svg {
     width: 100%;
     height: 100%;
-    border: 1.5px solid white;
-    background: #016a82;
-    border-radius: 0 15px 15px 0;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    background: linear-gradient(135deg, #016a82, #014d61);
+    border-radius: 0 24px 24px 0;
+    box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.2),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
 }
 
 .link-label {
     font-size: 10px;
-    fill: white;
+    font-family: 'Cascadia Code', monospace;
+    fill: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+/* Enhanced node styling */
+circle {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+    transition: r 0.2s ease;
+}
+
+circle:hover {
+    r: 12;
+    cursor: pointer;
+}
+
+/* Text styling improvements */
+text {
+    font-family: 'Mona Sans', sans-serif;
+    font-weight: 500;
+    paint-order: stroke fill;
+    stroke: rgba(0, 0, 0, 0.5);
+    stroke-width: 2px;
+    stroke-linejoin: round;
+}
+
+/* Link styling improvements */
+line {
+    transition: stroke-width 0.2s ease, opacity 0.3s ease;
+}
+
+line:hover {
+    stroke-width: 3px;
+}
+
+.tooltip {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 8px;
+    border-radius: 4px;
+    font-family: 'Mona Sans', sans-serif;
+    font-size: 12px;
+    pointer-events: none;
+    backdrop-filter: blur(10px);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+    #graph-container {
+        width: 65vw;
+    }
+
+    #details-panel {
+        width: 35vw;
+        font-size: 12px;
+        padding: 16px;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        font-size: 14px;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+        padding: 10px 20px;
+    }
+
+    #container {
+        flex-direction: column;
+    }
+
+    #graph-container,
+    #details-panel {
+        width: 100vw;
+        height: 50vh;
+    }
+
+    #details-panel {
+        border-radius: 24px 24px 0 0;
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    svg {
+        border-radius: 24px 24px 0 0;
+    }
 }

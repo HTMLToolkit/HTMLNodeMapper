@@ -37,12 +37,6 @@ const GRAPH_CONFIG = {
     }
 };
 
-/**
- * Renders the D3 graph with nodes and links.
- * @param {Array} nodes - Array of node objects.
- * @param {Array} links - Array of link objects.
- * @param {Map} scriptContentMap - Map of script contents.
- */
 export function renderGraph(nodes, links, scriptContentMap) {
     const svg = d3.select("svg");
     svg.selectAll("*").remove();
@@ -67,6 +61,18 @@ export function renderGraph(nodes, links, scriptContentMap) {
 
     let focusedNodeId = null;
     let hasClickedEmptySpace = false;
+
+    // Add tooltip
+    const tooltip = d3.select("body").append("div")
+        .attr("class", "tooltip")
+        .style("position", "absolute")
+        .style("visibility", "hidden")
+        .style("background", "rgba(0, 15, 26, 0.8)")
+        .style("color", "white")
+        .style("padding", "8px")
+        .style("border-radius", "4px")
+        .style("font-size", "12px")
+        .style("pointer-events", "none");
 
     const link = g.append("g")
         .selectAll("g")
@@ -105,6 +111,19 @@ export function renderGraph(nodes, links, scriptContentMap) {
         .attr("r", GRAPH_CONFIG.nodeRadius)
         .attr("fill", d => GRAPH_CONFIG.colors[d.type] || GRAPH_CONFIG.colors.default)
         .on("click", (event, d) => handleNodeClick(event, d, width, height, svg, scriptContentMap))
+        .on("mouseover", function (event, d) {
+            tooltip.style("visibility", "visible")
+                .text(d.name + (d.content ? `: ${d.content.slice(0, 50)}...` : ""));
+            d3.select(this).attr("r", GRAPH_CONFIG.nodeRadius * 1.2);
+        })
+        .on("mousemove", (event) => {
+            tooltip.style("top", (event.pageY - 10) + "px")
+                .style("left", (event.pageX + 10) + "px");
+        })
+        .on("mouseout", function () {
+            tooltip.style("visibility", "hidden");
+            d3.select(this).attr("r", GRAPH_CONFIG.nodeRadius);
+        })
         .call(d3.drag()
             .on("start", dragStart)
             .on("drag", dragging)
@@ -206,39 +225,28 @@ export function renderGraph(nodes, links, scriptContentMap) {
         node.style("visibility", d => focusedNodeId === null || connectedNodeIds.has(d.id) ? "visible" : "hidden");
         labels.style("visibility", d => focusedNodeId === null || connectedNodeIds.has(d.id) ? "visible" : "hidden");
 
-        link.select("line")
-            .style("visibility", d => {
-                if (d.type === "element-use" || d.type === "style-use" || d.type === "variable-use" || d.type === "js-style-mod") {
-                    return d.visible ? "visible" : "hidden";
-                }
-                if (d.type === "function-call") {
-                    return focusedNodeId !== null && d.source.id === focusedNodeId ? "visible" : "hidden";
-                }
-                return focusedNodeId === null || (d.source.id === focusedNodeId || d.target.id === focusedNodeId) ? "visible" : "hidden";
-            })
-            .style("opacity", d => {
-                if (focusedNodeId === null && !hasClickedEmptySpace && (d.type === "element-use" || d.type === "style-use" || d.type === "variable-use" || d.type === "js-style-mod")) {
-                    return 0.3;
-                }
-                return 1;
-            });
+        link.each(function (d) {
+            const line = d3.select(this).select("line");
+            const text = d3.select(this).select("text");
+            if (d.type === "element-use" || d.type === "style-use" || d.type === "variable-use" || d.type === "js-style-mod") {
+                line.style("visibility", d.visible ? "visible" : "hidden");
+                text.style("visibility", d.visible ? "visible" : "hidden");
+            } else if (d.type === "function-call") {
+                const visibility = focusedNodeId !== null && d.source.id === focusedNodeId ? "visible" : "hidden";
+                line.style("visibility", visibility);
+                text.style("visibility", visibility);
+            } else {
+                const visibility = focusedNodeId === null || (d.source.id === focusedNodeId || d.target.id === focusedNodeId) ? "visible" : "hidden";
+                line.style("visibility", visibility);
+                text.style("visibility", visibility);
+            }
 
-        link.select("text")
-            .style("visibility", d => {
-                if (d.type === "element-use" || d.type === "style-use" || d.type === "variable-use" || d.type === "js-style-mod") {
-                    return d.visible ? "visible" : "hidden";
-                }
-                if (d.type === "function-call") {
-                    return focusedNodeId !== null && d.source.id === focusedNodeId ? "visible" : "hidden";
-                }
-                return focusedNodeId === null || (d.source.id === focusedNodeId || d.target.id === focusedNodeId) ? "visible" : "hidden";
-            })
-            .style("opacity", d => {
-                if (focusedNodeId === null && !hasClickedEmptySpace && (d.type === "element-use" || d.type === "style-use" || d.type === "variable-use" || d.type === "js-style-mod")) {
-                    return 0.3;
-                }
-                return 1;
-            });
+            const opacity = (focusedNodeId === null && !hasClickedEmptySpace &&
+                (d.type === "element-use" || d.type === "style-use" ||
+                    d.type === "variable-use" || d.type === "js-style-mod")) ? 0.3 : 1;
+            line.style("opacity", opacity);
+            text.style("opacity", opacity);
+        });
 
         simulation.alpha(0.1).restart();
     }
