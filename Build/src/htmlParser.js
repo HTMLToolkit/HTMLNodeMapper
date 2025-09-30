@@ -2,7 +2,7 @@
 
 import { parse as parse5HTML } from "parse5";
 import { parse as parseJS } from "acorn";
-import { parse } from "css";
+import { parse as parseCSS } from "css";
 import { findFunctionEnd, updateProgress } from "./utils.js";
 
 /**
@@ -17,7 +17,7 @@ import { findFunctionEnd, updateProgress } from "./utils.js";
 export function parseHTML(html, progressBar, loading, progressContainer, resetUI, renderGraph) {
     try {
         // Parse HTML into a tree
-        const document = parse5HTML(html);
+        const document = parse5HTML(html, { sourceCodeLocationInfo: true });
         const nodes = [];
         const links = [];
         let nodeId = 0;
@@ -42,21 +42,22 @@ export function parseHTML(html, progressBar, loading, progressContainer, resetUI
             if (!node) return;
             if (node.nodeName === "#text" || node.nodeName === "#comment") return;
 
-            let nodeName = node.tagName || node.nodeName;
-            let currentId = addNode(nodeName, "element", parentId, node.__location ? html.substring(node.__location.startOffset, node.__location.endOffset) : null);
+            const nodeName = node.tagName || node.nodeName;
+            const currentId = addNode(nodeName, "element", parentId,
+                node.__location ? html.substring(node.__location.startOffset, node.__location.endOffset) : null
+            );
 
-            // Attributes
+            // Register element tag for tag selectors
+            elementMap.set(nodeName, currentId);
+
+            // Attributes: only map IDs and classes, do NOT create extra nodes
             if (node.attrs) {
                 node.attrs.forEach(attr => {
                     if (attr.name === "id") {
                         elementMap.set(`#${attr.value}`, currentId);
-                        addNode(`#${attr.value}`, "id", currentId);
                     }
                     if (attr.name === "class") {
-                        attr.value.split(/\s+/).forEach(cls => {
-                            elementMap.set(`.${cls}`, currentId);
-                            addNode(`.${cls}`, "class", currentId);
-                        });
+                        attr.value.split(/\s+/).forEach(cls => elementMap.set(`.${cls}`, currentId));
                     }
                     if (attr.name === "style") {
                         addNode("Inline Style", "inline-style", currentId, attr.value);
@@ -89,15 +90,15 @@ export function parseHTML(html, progressBar, loading, progressContainer, resetUI
                         break;
                     }
                     case "ReturnStatement": {
-                            if (node.argument) {
-                                const returnVal = node.argument.start != null
-                                    ? scriptContent.substring(node.argument.start, node.argument.end)
-                                    : "<empty>";
-                                const returnId = addNode(`Return: ${returnVal}`, "output", parentId);
-                                links.push({ source: parentId, target: returnId, type: "output" });
-                            }
-                            break;
+                        if (node.argument) {
+                            const returnVal = node.argument.start != null
+                                ? scriptContent.substring(node.argument.start, node.argument.end)
+                                : "<empty>";
+                            const returnId = addNode(`Return: ${returnVal}`, "output", parentId);
+                            links.push({ source: parentId, target: returnId, type: "output" });
                         }
+                        break;
+                    }
 
                     case "VariableDeclaration": {
                         node.declarations.forEach(decl => {
@@ -153,52 +154,88 @@ export function parseHTML(html, progressBar, loading, progressContainer, resetUI
             if (node.tagName === "link" && node.attrs?.some(a => a.name === "rel" && a.value === "stylesheet")) {
                 const href = node.attrs.find(a => a.name === "href")?.value || "external-style";
                 const styleId = addNode(href, "external-style", parentId);
-                styleMap.set(href, styleId);
+                styleMap.set(href, { id: styleId, css: null });
             }
 
             if (node.tagName === "style") {
-                const styleId = addNode("inline-stylesheet", "stylesheet", parentId, node.childNodes?.[0]?.value);
-                styleMap.set("inline-stylesheet", styleId);
+                const cssContent = node.childNodes?.[0]?.value || "";
+                const styleId = addNode("inline-stylesheet", "stylesheet", parentId, cssContent);
+
+                try {
+                    const parsedCSS = parseCSS(cssContent);
+                    styleMap.set("inline-stylesheet", { id: styleId, css: parsedCSS });
+                } catch (e) {
+                    console.warn("Failed to parse CSS:", e.message);
+                }
             }
+
 
             if (node.childNodes) node.childNodes.forEach(child => extractScriptsAndStyles(child, parentId));
         }
 
-        function extractGameElements(node, parentId = null) {
-            if (!node) return;
+        function linkStylesToElements() {
+            for (const [styleName, styleInfo] of styleMap.entries()) {
+                if (!styleInfo || !styleInfo.css || !styleInfo.css.stylesheet) continue;
 
-            const selectors = ["#player", ".platform", ".spike", ".teleporter", "#ground", "#gameOver"];
-            if (node.attrs) {
-                node.attrs.forEach(attr => {
-                    const val = attr.value;
-                    if ((attr.name === "id" && selectors.includes(`#${val}`)) ||
-                        (attr.name === "class" && val.split(/\s+/).some(c => selectors.includes(`.${c}`)))) {
-                        addNode(attr.value, "game-element", parentId, node.__location ? html.substring(node.__location.startOffset, node.__location.endOffset) : null);
-                    }
-                });
-            }
+                const styleId = styleInfo.id;
+                const rules = styleInfo.css.stylesheet.rules || [];
 
-            if (node.childNodes) node.childNodes.forEach(child => extractGameElements(child, parentId));
-        }
+                for (const rule of rules) {
+                    if (rule.type !== "rule" || !rule.selectors) continue;
 
-        function linkStylesToElements(nodes) {
-            nodes.forEach(node => {
-                if (node.type === "element" && node.content) {
-                    const classMatch = node.content.match(/class\s*=\s*['"]([^'"]+)['"]/);
-                    if (classMatch) {
-                        const classes = classMatch[1].split(/\s+/);
-                        classes.forEach(cls => {
-                            nodes.forEach(styleNode => {
-                                if ((styleNode.type === "stylesheet" || styleNode.type === "external-style") && styleNode.content) {
-                                    if (styleNode.content.includes(`.${cls}`)) {
-                                        links.push({ source: styleNode.id, target: node.id, type: "stylesheet-use", label: `Applies .${cls}`, visible: true });
-                                    }
-                                }
+                    for (let selector of rule.selectors) {
+                        selector = selector.trim().replace(/:.+$/, ""); // remove pseudo-classes
+                        const parts = selector.split(/\s+/).map(p => p.trim());
+
+                        // helper to match a single part
+                        function matchPart(part) {
+                            const ids = new Set();
+                            const tagMatch = part.match(/^([a-zA-Z][\w-]*)/);
+                            const classMatches = [...part.matchAll(/\.([\w-]+)/g)];
+                            const idMatch = part.match(/#([\w-]+)/);
+
+                            if (tagMatch && elementMap.has(tagMatch[1])) ids.add(elementMap.get(tagMatch[1]));
+                            if (idMatch && elementMap.has(`#${idMatch[1]}`)) ids.add(elementMap.get(`#${idMatch[1]}`));
+                            for (const cls of classMatches) {
+                                if (elementMap.has(`.${cls[1]}`)) ids.add(elementMap.get(`.${cls[1]}`));
+                            }
+                            return ids;
+                        }
+
+                        const candidateIds = matchPart(parts[parts.length - 1]);
+                        const matchedIds = new Set();
+
+                        // verify full ancestor chain
+                        function matchesSelectorPath(nodeId) {
+                            let currentId = nodeId;
+                            for (let i = parts.length - 2; i >= 0; i--) {
+                                const parentLink = links.find(l => l.target === currentId && l.type === "structural");
+                                if (!parentLink) return false;
+                                const parentId = parentLink.source;
+                                const ids = matchPart(parts[i]);
+                                if (!ids.has(parentId)) return false;
+                                currentId = parentId;
+                            }
+                            return true;
+                        }
+
+                        candidateIds.forEach(id => {
+                            if (matchesSelectorPath(id)) matchedIds.add(id);
+                        });
+
+                        // add links for matched elements
+                        matchedIds.forEach(targetId => {
+                            links.push({
+                                source: styleId,
+                                target: targetId,
+                                type: "stylesheet-use",
+                                label: `Applies ${selector}`,
+                                visible: true
                             });
                         });
                     }
                 }
-            });
+            }
         }
 
         updateProgress(progressBar, 25);
@@ -206,8 +243,7 @@ export function parseHTML(html, progressBar, loading, progressContainer, resetUI
         updateProgress(progressBar, 50);
         extractScriptsAndStyles(document);
         updateProgress(progressBar, 75);
-        extractGameElements(document);
-        linkStylesToElements(nodes);
+        linkStylesToElements();
         updateProgress(progressBar, 100);
 
         setTimeout(() => {
